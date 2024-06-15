@@ -4,11 +4,7 @@
     {
         public class Program
         {
-            static List<Player> players = new List<Player>
-        {
-            new Player("player1", "Description for player1"),
-            new Player("player2", "Description for player2")
-        };
+            static List<Player> players;
 
             static void Main(string[] args)
             {
@@ -26,11 +22,13 @@
 
             public class Player
             {
+                public int PlayerId { get; set; }
                 public string Name { get; set; }
                 public string Description { get; set; }
 
-                public Player(string name, string description)
+                public Player(int playerId, string name, string description)
                 {
+                    PlayerId = playerId;
                     Name = name;
                     Description = description;
                 }
@@ -40,17 +38,21 @@
                     return $"{Name} - {Description}";
                 }
             }
+        
 
-            // Main Menu
-            public static void MainMenu()
+        // Main Menu
+        public static void MainMenu()
             {
+                DAL dal = new DAL();
+                players = dal.ReadPlayersFromDatabase();
+
                 Console.Clear();
                 List<string> options = new List<string> {
-                "Start Game",
-                "Manage Players",
-                "Read Rules",
-                "Quit"
-            };
+                    "Start Game",
+                    "Manage Players",
+                    "Read Rules",
+                    "Quit"
+                };
                 int choice = DisplayMenuOptions(options, "Main menu - select an option");
                 switch (choice)
                 {
@@ -98,11 +100,11 @@
                 Console.WriteLine("=================");
 
                 List<string> options = new List<string> {
-                "Start New Game",
-                "Load Game",
-                "Game History",
-                "Go back"
-            };
+                    "Start New Game",
+                    "Load Game",
+                    "Game History",
+                    "Go back"
+                };
 
                 int choice = DisplayMenuOptions(options, "Games - select an option");
                 switch (choice)
@@ -141,18 +143,18 @@
                     Console.WriteLine("");
 
                     List<string> options = new List<string>
-                {
-                    "Drive / ferry",
-                    "Direct flight",
-                    "Charter flight",
-                    "Shuttle flight",
-                    "Build research station",
-                    "Treat disease",
-                    "Share knowledge",
-                    "Discover a cure",
-                    "Pass",
-                    "Save game and exit"
-                };
+                    {
+                        "Drive / ferry",
+                        "Direct flight",
+                        "Charter flight",
+                        "Shuttle flight",
+                        "Build research station",
+                        "Treat disease",
+                        "Share knowledge",
+                        "Discover a cure",
+                        "Pass",
+                        "Save game and exit"
+                    };
 
                     int choice = DisplayMenuOptions(options, "Choose move action or other options:");
                     switch (choice)
@@ -287,11 +289,11 @@
 
                 // normaal komt dit uit database
                 List<string> savedGames = new List<string>
-            {
-                "Game 1 (01/01/2024 10:00 AM)",
-                "Game 2 (02/01/2024 02:00 PM)",
-                "Game 3 (03/01/2024 04:00 PM)"
-            };
+                {
+                    "Game 1 (01/01/2024 10:00 AM)",
+                    "Game 2 (02/01/2024 02:00 PM)",
+                    "Game 3 (03/01/2024 04:00 PM)"
+                };
 
                 for (int i = 0; i < savedGames.Count; i++)
                 {
@@ -332,10 +334,10 @@
 
                 // echte versie komt dit uit database
                 List<string> completedGames = new List<string>
-            {
-                "Game 1 (01/01/2024 10:00 AM) (Win)",
-                "Game 2 (02/01/2024 02:00 PM) (Loss)"
-            };
+                {
+                    "Game 1 (01/01/2024 10:00 AM) (Win)",
+                    "Game 2 (02/01/2024 02:00 PM) (Loss)"
+                };
 
                 foreach (var game in completedGames)
                 {
@@ -369,12 +371,12 @@
                 Console.WriteLine("");
 
                 List<string> options = new List<string>
-            {
-                "Add new player",
-                "Edit player",
-                "Remove player",
-                "Go back"
-            };
+                {
+                    "Add new player",
+                    "Edit player",
+                    "Remove player",
+                    "Go back"
+                };
                 int choice = DisplayMenuOptions(options, "Manage players - select an option");
                 switch (choice)
                 {
@@ -405,7 +407,13 @@
                 string newPlayerName = Console.ReadLine();
                 Console.Write("Enter the description of the new player: ");
                 string newDescription = Console.ReadLine();
-                players.Add(new Player(newPlayerName, newDescription));
+
+                DAL dal = new DAL();
+                dal.AddPlayerToDatabase(newPlayerName, newDescription);
+
+                // Update the local player list
+                players = dal.ReadPlayersFromDatabase();
+
                 Console.WriteLine($"{newPlayerName} has been added with the description: {newDescription}.");
                 ManagePlayers();
             }
@@ -425,12 +433,18 @@
                 {
                     Console.WriteLine("Invalid input. Please enter a valid number.");
                 }
+                playerIndex--; // Convert to zero-based index
                 Console.Write("Enter the new name for the player: ");
                 string newName = Console.ReadLine();
                 Console.Write("Enter the new description for the player: ");
                 string newDescription = Console.ReadLine();
-                players[playerIndex - 1].Name = newName;
-                players[playerIndex - 1].Description = newDescription;
+
+                DAL dal = new DAL();
+                dal.UpdatePlayerInDatabase(playerIndex + 1, newName, newDescription); // Assuming playerId is the index + 1
+
+                // Update the local player list
+                players = dal.ReadPlayersFromDatabase();
+
                 Console.WriteLine($"Player name has been updated to {newName} with the description: {newDescription}.");
                 ManagePlayers();
             }
@@ -450,8 +464,17 @@
                 {
                     Console.WriteLine("Invalid input. Please enter a valid number.");
                 }
-                Console.WriteLine($"{players[playerIndex - 1].Name} has been removed.");
-                players.RemoveAt(playerIndex - 1);
+                playerIndex--; // Convert to zero-based index
+
+                string playerName = players[playerIndex].Name; // Store the name before removing
+
+                DAL dal = new DAL();
+                dal.RemovePlayerFromDatabase(players[playerIndex].PlayerId);
+
+                // Update the local player list
+                players = dal.ReadPlayersFromDatabase();
+
+                Console.WriteLine($"{playerName} has been removed.");
                 ManagePlayers();
             }
 
@@ -459,16 +482,16 @@
             public static void ReadRules()
             {
                 List<string> rules = new List<string>
-             {
-                "Objective\n\nThe objective of the game is for the players to work together to discover cures for all four diseases before any of several losing conditions are met.",
-                "Setup\n\nSetup the Board:\n- Place the board in the center of the play area.\n- Place the Outbreaks marker on the '0' space of the Outbreaks track.\n- Place the Infection Rate marker on the left-most '2' space of the Infection Rate track.\n- Place the six Research Stations supply nearby.\n- Place one Research Station in Atlanta.\n\nPrepare the Infection Deck:\n- Shuffle the Infection Deck and draw 9 cards.\n- Place 3 disease cubes on each of the first 3 cities drawn.\n- Place 2 disease cubes on each of the next 3 cities drawn.\n- Place 1 disease cube on each of the last 3 cities drawn.\n- Place the Infection Deck on the Infection Draw Pile space.\n\nPrepare the Player Deck:\n- Separate the Epidemic cards from the Player Deck.\n- Divide the Player Deck into piles according to the number of Epidemic cards (based on difficulty level).\n- Shuffle one Epidemic card into each pile and stack them to form the Player Draw Pile.\n- Deal 2 Player cards to each player.\n\nSet Player Roles:\n- Assign each player a Role card randomly.\n- Place the corresponding pawn for each player in Atlanta.\n- Each player starts with 4 action points per turn.",
-                "Player Actions\n\nOn each player's turn, they may take up to 4 actions. The actions available are:\n\nDrive/Ferry:\n- Move to a city connected by a white line.\n\nDirect Flight:\n- Discard a City card to move to the city named on the card.\n\nCharter Flight:\n- Discard the City card that matches the city you are in to move to any city.\n\nShuttle Flight:\n- Move from a city with a Research Station to any other city with a Research Station.\n\nBuild a Research Station:\n- Discard the City card that matches the city you are in to place a Research Station there.\n\nTreat Disease:\n- Remove one disease cube from the city you are in. If a cure has been discovered for this disease, remove all cubes of that color from the city.\n\nShare Knowledge:\n- Give the City card that matches the city you are in to another player in that city. Both players must be in the same city.\n\nDiscover a Cure:\n- At any Research Station, discard 5 City cards of the same color to discover a cure for that disease.",
-                "Drawing Cards\n\nAt the end of a player's turn, they draw 2 cards from the Player Deck.\n\nIf a player draws an Epidemic card:\n\nIncrease:\n- Move the Infection Rate marker forward one space.\n\nInfect:\n- Draw the bottom card from the Infection Deck. Place 3 cubes on that city.\n\nIntensify:\n- Shuffle the cards in the Infection Discard Pile and place them on top of the Infection Deck.",
-                "Infecting Cities\n\nAfter drawing Player cards, draw Infection cards equal to the current Infection Rate.\n\nFor each Infection card drawn, add one disease cube to the city shown on the card.",
-                "Outbreaks\n\nIf a city already has 3 cubes of the color being added, an outbreak occurs.\n\nMove the Outbreaks marker forward one space.\n\nAdd one disease cube to each city connected to the city with the outbreak.",
-                "Winning the Game\n\nThe players win if they discover cures for all four diseases.",
-                "Losing the Game\n\nThe players lose if any of the following occurs:\n\n- The Outbreaks marker reaches the last space on the Outbreaks track.\n\n- There are not enough disease cubes to place on the board when needed.\n\n- There are not enough cards in the Player Deck when players need to draw."
-             };
+                {
+                    "Objective\n\nThe objective of the game is for the players to work together to discover cures for all four diseases before any of several losing conditions are met.",
+                    "Setup\n\nSetup the Board:\n- Place the board in the center of the play area.\n- Place the Outbreaks marker on the '0' space of the Outbreaks track.\n- Place the Infection Rate marker on the left-most '2' space of the Infection Rate track.\n- Place the six Research Stations supply nearby.\n- Place one Research Station in Atlanta.\n\nPrepare the Infection Deck:\n- Shuffle the Infection Deck and draw 9 cards.\n- Place 3 disease cubes on each of the first 3 cities drawn.\n- Place 2 disease cubes on each of the next 3 cities drawn.\n- Place 1 disease cube on each of the last 3 cities drawn.\n- Place the Infection Deck on the Infection Draw Pile space.\n\nPrepare the Player Deck:\n- Separate the Epidemic cards from the Player Deck.\n- Divide the Player Deck into piles according to the number of Epidemic cards (based on difficulty level).\n- Shuffle one Epidemic card into each pile and stack them to form the Player Draw Pile.\n- Deal 2 Player cards to each player.\n\nSet Player Roles:\n- Assign each player a Role card randomly.\n- Place the corresponding pawn for each player in Atlanta.\n- Each player starts with 4 action points per turn.",
+                    "Player Actions\n\nOn each player's turn, they may take up to 4 actions. The actions available are:\n\nDrive/Ferry:\n- Move to a city connected by a white line.\n\nDirect Flight:\n- Discard a City card to move to the city named on the card.\n\nCharter Flight:\n- Discard the City card that matches the city you are in to move to any city.\n\nShuttle Flight:\n- Move from a city with a Research Station to any other city with a Research Station.\n\nBuild a Research Station:\n- Discard the City card that matches the city you are in to place a Research Station there.\n\nTreat Disease:\n- Remove one disease cube from the city you are in. If a cure has been discovered for this disease, remove all cubes of that color from the city.\n\nShare Knowledge:\n- Give the City card that matches the city you are in to another player in that city. Both players must be in the same city.\n\nDiscover a Cure:\n- At any Research Station, discard 5 City cards of the same color to discover a cure for that disease.",
+                    "Drawing Cards\n\nAt the end of a player's turn, they draw 2 cards from the Player Deck.\n\nIf a player draws an Epidemic card:\n\nIncrease:\n- Move the Infection Rate marker forward one space.\n\nInfect:\n- Draw the bottom card from the Infection Deck. Place 3 cubes on that city.\n\nIntensify:\n- Shuffle the cards in the Infection Discard Pile and place them on top of the Infection Deck.",
+                    "Infecting Cities\n\nAfter drawing Player cards, draw Infection cards equal to the current Infection Rate.\n\nFor each Infection card drawn, add one disease cube to the city shown on the card.",
+                    "Outbreaks\n\nIf a city already has 3 cubes of the color being added, an outbreak occurs.\n\nMove the Outbreaks marker forward one space.\n\nAdd one disease cube to each city connected to the city with the outbreak.",
+                    "Winning the Game\n\nThe players win if they discover cures for all four diseases.",
+                    "Losing the Game\n\nThe players lose if any of the following occurs:\n\n- The Outbreaks marker reaches the last space on the Outbreaks track.\n\n- There are not enough disease cubes to place on the board when needed.\n\n- There are not enough cards in the Player Deck when players need to draw."
+                };
 
                 int currentPage = 0;
 
